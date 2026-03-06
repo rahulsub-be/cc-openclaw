@@ -8,30 +8,35 @@ Claude Code skills for managing your [OpenClaw](https://openclaw.ai) deployment.
 
 ## Quick Start
 
-### Option 1: Clone into your openclaw-home repo
+Clone the repo and use [GNU Stow](https://www.gnu.org/software/stow/) to symlink the skills into your openclaw-home project:
 
 ```bash
-cd ~/your-openclaw-home-repo
-git clone https://github.com/rahulsub-be/cc-openclaw.git .cc-openclaw-tmp
-cp -r .cc-openclaw-tmp/.claude/skills/openclaw-* .claude/skills/
-rm -rf .cc-openclaw-tmp
+git clone https://github.com/rahulsub-be/cc-openclaw.git ~/cc-openclaw
+cd ~/cc-openclaw
+stow --no-folding -t ~/your-openclaw-home-repo .
 ```
 
-### Option 2: Use as a standalone project
+This creates symlinks from your openclaw-home's `.claude/skills/openclaw-*/` pointing into the cc-openclaw repo. Only the `.claude/` directory is stowed — `README.md`, `LICENSE`, and other repo files are excluded via `.stow-local-ignore`.
+
+Open Claude Code in your openclaw-home directory and type `/openclaw-` to see all nine skills in autocomplete.
+
+### Updating
+
+When skills get updates, pull the latest — symlinks mean changes take effect immediately:
 
 ```bash
-git clone https://github.com/rahulsub-be/cc-openclaw.git
-cd cc-openclaw
-claude  # Skills are auto-discovered when you open Claude Code here
+cd ~/cc-openclaw
+git pull
 ```
 
-### Option 3: Cherry-pick individual skills
-
-Copy just the skills you need into any project's `.claude/skills/` directory:
+If new skills were added, re-run stow to create the new symlinks:
 
 ```bash
-cp -r cc-openclaw/.claude/skills/openclaw-status .claude/skills/
+cd ~/cc-openclaw
+stow --no-folding -t ~/your-openclaw-home-repo .
 ```
+
+This is the same Git+Stow pattern used by OpenClaw itself for agent configuration.
 
 ## Available Skills
 

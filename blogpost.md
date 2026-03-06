@@ -183,16 +183,24 @@ The skills also compose naturally. `/openclaw-new-agent` suggests running `/open
 
 The skills are open-source at [**github.com/rahulsub-be/cc-openclaw**](https://github.com/rahulsub-be/cc-openclaw).
 
-To use them, clone the repo and copy the skills into your openclaw-home project:
+Clone the repo alongside your openclaw-home project and use GNU Stow to symlink the skills in:
 
 ```bash
-cd ~/your-openclaw-home-repo
-git clone https://github.com/rahulsub-be/cc-openclaw.git .cc-openclaw-tmp
-cp -r .cc-openclaw-tmp/.claude/skills/openclaw-* .claude/skills/
-rm -rf .cc-openclaw-tmp
+git clone https://github.com/rahulsub-be/cc-openclaw.git ~/cc-openclaw
+cd ~/cc-openclaw
+stow --no-folding -t ~/your-openclaw-home-repo .
 ```
 
-Open Claude Code in your openclaw-home directory and the skills auto-discover. Type `/openclaw-` and you'll see all nine in autocomplete.
+This creates symlinks from your openclaw-home's `.claude/skills/` pointing into the cc-openclaw repo. Open Claude Code in your openclaw-home directory and type `/openclaw-` — all nine skills show up in autocomplete.
+
+When the skills get updates, pull and you're done — the symlinks already point to the right place:
+
+```bash
+cd ~/cc-openclaw
+git pull
+```
+
+If new skills were added, re-run stow to pick them up. This is the same Git+Stow pattern from the original article, now applied to the configuration tools themselves.
 
 All skills detect your repo location automatically via the stow symlink:
 
