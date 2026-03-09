@@ -16,6 +16,18 @@ Read `~/.openclaw/workspace/skills/05-cron-system.md` for detailed guidance.
 
 ```bash
 OPENCLAW_REPO=$(readlink ~/.openclaw/openclaw.json 2>/dev/null | sed 's|/.openclaw/openclaw.json||')
+TIER_CONFIGS=(~/.openclaw/configs/openclaw-*.json)
+[[ -f "${TIER_CONFIGS[0]}" ]] && MULTI_GATEWAY=true || MULTI_GATEWAY=false
+```
+
+If multi-gateway, resolve the agent's tier for log verification:
+```bash
+for cfg in ~/.openclaw/configs/openclaw-*.json; do
+  if grep -q "\"id\": *\"$ARGUMENTS\"" "$cfg" 2>/dev/null; then
+    TIER=$(basename "$cfg" | sed 's/openclaw-//;s/.json//')
+    break
+  fi
+done
 ```
 
 ## Steps
@@ -80,7 +92,9 @@ rm -f ~/.openclaw/cron/jobs.json
 cd "$OPENCLAW_REPO" && stow --no-folding -t ~ .
 ```
 
-7. **Verify:** The gateway picks up new jobs on the next cron tick. Check `~/.openclaw/logs/gateway.log` for the job running.
+7. **Verify:** The gateway picks up new jobs on the next cron tick. Check logs:
+- Multi-gateway: `tail -30 ~/.openclaw-$TIER/gateway.log`
+- Single-gateway: `tail -30 ~/.openclaw/logs/gateway.log`
 
 ## Important
 - Always set `timeoutSeconds` for agentTurn payloads (prevents runaway sessions)
