@@ -16,21 +16,42 @@ Read `~/.openclaw/workspace/skills/07-channel-configuration.md` for detailed gui
 
 ```bash
 OPENCLAW_REPO=$(readlink ~/.openclaw/openclaw.json 2>/dev/null | sed 's|/.openclaw/openclaw.json||')
+TIER_CONFIGS=(~/.openclaw/configs/openclaw-*.json)
+[[ -f "${TIER_CONFIGS[0]}" ]] && MULTI_GATEWAY=true || MULTI_GATEWAY=false
+```
+
+## Resolve Config File
+
+### Multi-gateway
+Find which tier the agent belongs to:
+```bash
+for cfg in ~/.openclaw/configs/openclaw-*.json; do
+  if grep -q "\"id\": *\"$0\"" "$cfg" 2>/dev/null; then
+    TIER=$(basename "$cfg" | sed 's/openclaw-//;s/.json//')
+    CONFIG="$OPENCLAW_REPO/.openclaw/configs/openclaw-$TIER.json"
+    break
+  fi
+done
+```
+If the agent isn't found in any tier config, ask the user which tier it belongs to.
+
+### Single-gateway
+```bash
+CONFIG="$OPENCLAW_REPO/.openclaw/openclaw.json"
 ```
 
 ## Steps
 
-1. **Read current config:** Read `$OPENCLAW_REPO/.openclaw/openclaw.json` to see existing channels and bindings.
+1. **Read current config:** Read `$CONFIG` to see existing channels and bindings.
 
 2. **Depending on channel type:**
 
 ### Telegram
 - Ask user for the bot token (from @BotFather)
 - Store in keychain:
-  ```bash
-  security add-generic-password -s "openclaw.telegram-$0-bot-token" -a "openclaw" -w "<TOKEN>" ~/.openclaw/openclaw.keychain-db
-  ```
-- Add to `channels.telegram.accounts` in openclaw.json:
+  - Multi-gateway: `security add-generic-password -s "openclaw-$TIER-telegram-$0-bot-token" -a "openclaw" -w "<TOKEN>" ~/.openclaw/openclaw.keychain-db`
+  - Single-gateway: `security add-generic-password -s "openclaw.telegram-$0-bot-token" -a "openclaw" -w "<TOKEN>" ~/.openclaw/openclaw.keychain-db`
+- Add to `channels.telegram.accounts` in the config (NEVER add botToken at the top-level telegram config — only in accounts):
   ```json
   "$0": {
     "name": "<agent display name>",
@@ -45,8 +66,8 @@ OPENCLAW_REPO=$(readlink ~/.openclaw/openclaw.json 2>/dev/null | sed 's|/.opencl
 
 ### Slack
 - Ask user for bot token (`xoxb-...`) and app token (`xapp-...`)
-- Store both in keychain
-- Add to `channels.slack.accounts` with both tokens, `mode: "socket"`, `nativeStreaming: true`
+- Store both in keychain (same tier-aware naming as Telegram)
+- Add to `channels.slack.accounts` with both tokens, `nativeStreaming: true` (NEVER add tokens or nativeStreaming at the top-level slack config — only in accounts)
 - Add binding with accountId
 
 ### WhatsApp
@@ -56,9 +77,15 @@ OPENCLAW_REPO=$(readlink ~/.openclaw/openclaw.json 2>/dev/null | sed 's|/.opencl
 ### GChat
 - Add binding: `{"agentId": "$0", "match": {"channel": "gchat", "accountId": "$0"}}`
 
-3. **Update secrets scripts** — Add export lines to BOTH:
-   - `$OPENCLAW_REPO/.openclaw/scripts/openclaw-secrets.sh`
-   - `$OPENCLAW_REPO/.openclaw/scripts/openclaw-env.sh`
+3. **Update secrets loader script:**
+
+### Multi-gateway
+Add export lines to `$OPENCLAW_REPO/.openclaw/scripts/start-$TIER.sh` (before the `exec` block), following the existing `kc()` pattern in the file.
+
+### Single-gateway
+Add export lines to BOTH:
+- `$OPENCLAW_REPO/.openclaw/scripts/openclaw-secrets.sh`
+- `$OPENCLAW_REPO/.openclaw/scripts/openclaw-env.sh`
 
 4. **Update secrets.sh** — Add entry to the SECRETS array in `$OPENCLAW_REPO/secrets.sh`
 
@@ -66,12 +93,23 @@ OPENCLAW_REPO=$(readlink ~/.openclaw/openclaw.json 2>/dev/null | sed 's|/.opencl
 ```bash
 rm -f ~/.openclaw/cron/jobs.json
 cd "$OPENCLAW_REPO" && stow --no-folding -t ~ .
+```
+
+### Multi-gateway
+```bash
+launchctl kickstart -k gui/$(id -u)/ai.openclaw.gateway.$TIER
+```
+
+### Single-gateway
+```bash
 launchctl kickstart -k gui/$(id -u)/ai.openclaw.gateway
 ```
 
-6. **Verify:** Check gateway logs for the new channel starting, then send a test message.
+6. **Verify:** Check the tier's gateway logs for the new channel starting, then send a test message.
+- Multi-gateway: `tail -30 ~/.openclaw-$TIER/gateway.log`
+- Single-gateway: `tail -30 ~/.openclaw/logs/gateway.log`
 
 ## Important
 - Env var naming convention: `OPENCLAW_TELEGRAM_<AGENT_UPPER>_BOT_TOKEN` (uppercase, underscores)
-- Keychain service naming: `openclaw.telegram-<agent-id>-bot-token` (lowercase, hyphens)
+- **Channel tokens go ONLY in the `accounts` section** — never at the top-level channel config. Adding tokens at both levels causes duplicate responses.
 - Never echo the token back to the user after storing it

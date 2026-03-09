@@ -10,9 +10,11 @@ Re-deploy configuration files from the openclaw-home repo to $HOME via GNU Stow.
 
 ## Setup Detection
 
-Detect the openclaw-home repo location:
+Detect the openclaw-home repo location and deployment mode:
 ```bash
 OPENCLAW_REPO=$(readlink ~/.openclaw/openclaw.json 2>/dev/null | sed 's|/.openclaw/openclaw.json||')
+TIER_CONFIGS=(~/.openclaw/configs/openclaw-*.json)
+[[ -f "${TIER_CONFIGS[0]}" ]] && MULTI_GATEWAY=true || MULTI_GATEWAY=false
 ```
 
 ## Steps
@@ -36,10 +38,21 @@ cd "$OPENCLAW_REPO" && stow --no-folding -t ~ .
    - If it's user-created content, back it up first
 
 4. **Verify key symlinks:**
+
+### Single-gateway
 ```bash
 ls -la ~/.openclaw/openclaw.json
 ls -la ~/.openclaw/cron/jobs.json
 ```
 Each should point to the openclaw-home repo.
+
+### Multi-gateway
+```bash
+ls -la ~/.openclaw/openclaw.json
+ls -la ~/.openclaw/cron/jobs.json
+ls -la ~/.openclaw/configs/openclaw-*.json
+ls -la ~/.openclaw/scripts/start-*.sh
+```
+All should be symlinks pointing to the openclaw-home repo.
 
 5. **Report result:** Confirm stow succeeded and list any warnings.

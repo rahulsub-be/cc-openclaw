@@ -16,6 +16,19 @@ Read `~/.openclaw/workspace/skills/02-memory-system.md` for the full memory syst
 
 ```bash
 OPENCLAW_REPO=$(readlink ~/.openclaw/openclaw.json 2>/dev/null | sed 's|/.openclaw/openclaw.json||')
+TIER_CONFIGS=(~/.openclaw/configs/openclaw-*.json)
+[[ -f "${TIER_CONFIGS[0]}" ]] && MULTI_GATEWAY=true || MULTI_GATEWAY=false
+```
+
+If multi-gateway, resolve the agent's tier and config:
+```bash
+for cfg in ~/.openclaw/configs/openclaw-*.json; do
+  if grep -q "\"id\": *\"$ARGUMENTS\"" "$cfg" 2>/dev/null; then
+    TIER=$(basename "$cfg" | sed 's/openclaw-//;s/.json//')
+    TIER_CONFIG="$OPENCLAW_REPO/.openclaw/configs/openclaw-$TIER.json"
+    break
+  fi
+done
 ```
 
 ## Steps
@@ -120,7 +133,11 @@ Add the job:
 }
 ```
 
-6. **Add QMD paths** to `$OPENCLAW_REPO/.openclaw/openclaw.json` memory.qmd.paths (if not already present):
+6. **Add QMD paths** to the appropriate config:
+- Multi-gateway: edit `$TIER_CONFIG`
+- Single-gateway: edit `$OPENCLAW_REPO/.openclaw/openclaw.json`
+
+Add to `memory.qmd.paths`:
 ```json
 {
   "path": "$HOME/.openclaw/agents/$ARGUMENTS/memory",
@@ -151,7 +168,9 @@ rm -f ~/.openclaw/cron/jobs.json
 cd "$OPENCLAW_REPO" && stow --no-folding -t ~ .
 ```
 
-9. **Verify:** The dream routine will run at the next scheduled time. To test manually, trigger the agent with the dream routine message.
+9. **Verify:** The dream routine will run at the next scheduled time. Check logs:
+- Multi-gateway: `tail -30 ~/.openclaw-$TIER/gateway.log`
+- Single-gateway: `tail -30 ~/.openclaw/logs/gateway.log`
 
 ## Important
 - Token budgets are critical: 2,500/day distillation, 7,500 rolling digest

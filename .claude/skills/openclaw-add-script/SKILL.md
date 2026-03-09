@@ -16,6 +16,18 @@ Read `~/.openclaw/workspace/skills/03-deterministic-scripts.md` for the full pat
 
 ```bash
 OPENCLAW_REPO=$(readlink ~/.openclaw/openclaw.json 2>/dev/null | sed 's|/.openclaw/openclaw.json||')
+TIER_CONFIGS=(~/.openclaw/configs/openclaw-*.json)
+[[ -f "${TIER_CONFIGS[0]}" ]] && MULTI_GATEWAY=true || MULTI_GATEWAY=false
+```
+
+If multi-gateway, resolve the agent's tier for restart:
+```bash
+for cfg in ~/.openclaw/configs/openclaw-*.json; do
+  if grep -q "\"id\": *\"$0\"" "$cfg" 2>/dev/null; then
+    TIER=$(basename "$cfg" | sed 's/openclaw-//;s/.json//')
+    break
+  fi
+done
 ```
 
 ## Steps
@@ -95,14 +107,24 @@ chmod +x "$OPENCLAW_REPO/.openclaw/agents/$0/scripts/$1.sh"
 
 7. **If critical, update SOUL.md** — For scripts that must always be used (never bypassed), add a mandatory rule:
 ```markdown
-## ⛔ MANDATORY
+## MANDATORY
 NEVER <do the thing manually> — use `scripts/$1.sh`
 ```
 
-8. **Stow to deploy:**
+8. **Stow and restart:**
 ```bash
 rm -f ~/.openclaw/cron/jobs.json
 cd "$OPENCLAW_REPO" && stow --no-folding -t ~ .
+```
+
+### Multi-gateway
+```bash
+launchctl kickstart -k gui/$(id -u)/ai.openclaw.gateway.$TIER
+```
+
+### Single-gateway
+```bash
+launchctl kickstart -k gui/$(id -u)/ai.openclaw.gateway
 ```
 
 ## Important
